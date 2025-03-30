@@ -12,9 +12,10 @@ import { wait } from "../../share/utils";
 const fetchInterval: number = 1000;
 const refreshInterval: number = 33;
 const turnDuration: number = refreshInterval * 8;
+const animationOverhead: number = 200;
 
 interface CarProps {
-  next: [number, number];
+  actual: [number, number];
   rotation: number;
   path: [number, number][];
 }
@@ -26,33 +27,67 @@ interface CarState {
 }
 
 class Car extends Component<CarProps, CarState> {
+  latestUpdateAt: number;
+  moveBusy: boolean;
   rotateBusy: boolean;
 
   constructor(props: CarProps) {
     super(props);
+
+    const {
+      path,
+      actual,
+    }: { path: [number, number][]; actual: [number, number] } = props;
+
+    let pathIndex: number = path.findIndex(([x, y]: [number, number]) => {
+      return x === actual[0] && y === actual[1];
+    });
+    if (pathIndex === 0) pathIndex = 1;
+
+    const rotation: number = getRotation(path, pathIndex);
+
+    this.latestUpdateAt = 0;
     this.rotateBusy = false;
+    this.moveBusy = false;
     this.state = {
-      position: props.next,
-      rotation: getRotation(props.path, 1),
-      path: props.path,
+      position: actual,
+      rotation,
+      path,
     };
   }
 
-  async move(next: [number, number]): Promise<void> {
-    if (next !== this.props.next) return;
+  async move(
+    actual: [number, number],
+    path: [number, number][],
+    receivedAt: number
+  ): Promise<void> {
+    while (this.moveBusy) {
+      await wait(100);
+      if (receivedAt !== this.latestUpdateAt) return;
+    }
 
-    const { path, position } = this.state;
+    this.moveBusy = true;
+
+    const { position } = this.state;
     let [currX, currY] = position;
 
     const startIndex = getNextCoordIndex(currX, currY, path);
-    const endIndex = path.findIndex(([x, y]) => x === next[0] && y === next[1]);
+    const endIndex = path.findIndex(
+      ([x, y]) => x === actual[0] && y === actual[1]
+    );
 
     const section = path.slice(startIndex, endIndex + 1);
+    if (section.length < 2) {
+      this.moveBusy = false;
+      return;
+    }
+
     const turnCount = countTurns(section);
     const turnsDuration = turnCount * turnDuration;
 
     const distance = endIndex - startIndex + Math.max(currX % 1, currY % 1);
-    const steps = (fetchInterval - turnsDuration) / refreshInterval;
+    const steps =
+      (fetchInterval - turnsDuration - animationOverhead) / refreshInterval;
     const increment = distance / steps;
 
     for (let i = 0; i < section.length; i++) {
@@ -65,21 +100,19 @@ class Car extends Component<CarProps, CarState> {
 
       const [nextX, nextY] = section[i];
       while (currX !== nextX) {
-        if (next !== this.props.next) return;
-
         currX = advanceCoord(currX, nextX, increment);
-        this.setState({ position: [currX, this.state.position[1]] });
+        this.setState({ position: [currX, this.state.position[1]], path });
         await wait(refreshInterval);
       }
 
       while (currY !== nextY) {
-        if (next !== this.props.next) return;
-
         currY = advanceCoord(currY, nextY, increment);
-        this.setState({ position: [this.state.position[0], currY] });
+        this.setState({ position: [this.state.position[0], currY], path });
         await wait(refreshInterval);
       }
     }
+
+    this.moveBusy = false;
   }
 
   async rotate(section: [number, number][], i: number): Promise<void> {
@@ -116,9 +149,15 @@ class Car extends Component<CarProps, CarState> {
     this.rotateBusy = false;
   }
 
-  componentDidUpdate(prevProps: Readonly<{ next: [number, number] }>): void {
-    if (prevProps.next === this.props.next) return;
-    this.move(this.props.next);
+  componentDidUpdate(prevProps: {
+    actual: [number, number];
+    path: [number, number][];
+  }): void {
+    if (prevProps.actual === this.props.actual) return;
+
+    const receivedAt: number = Date.now();
+    this.latestUpdateAt = receivedAt;
+    this.move(this.props.actual, this.props.path, receivedAt);
   }
 
   render() {

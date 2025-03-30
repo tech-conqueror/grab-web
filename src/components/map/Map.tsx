@@ -7,7 +7,7 @@ import routes from "../car/routes";
 
 interface CarData {
   carId: string;
-  next: [number, number];
+  actual: [number, number];
   rotation?: number;
   path: [number, number][];
 }
@@ -49,7 +49,7 @@ class Map extends Component<{}, MapState> {
         const update = {
           carId: routes[j].carId,
           path: routes[j].path,
-          next: routes[j].updates[i],
+          actual: routes[j].updates[i],
         };
         cars.push(update);
       }
@@ -85,8 +85,8 @@ class Map extends Component<{}, MapState> {
     });
 
     const cars = this.state.cars.map(
-      ({ carId, next, rotation = 270, path }) => (
-        <Car key={carId} next={next} rotation={rotation} path={path} />
+      ({ carId, actual, rotation = 270, path }) => (
+        <Car key={carId} actual={actual} rotation={rotation} path={path} />
       )
     );
 
