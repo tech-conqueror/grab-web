@@ -64,7 +64,6 @@ export const countTurns = (section: [number, number][]): number => {
 };
 
 export const getRotation = (path: [number, number][], i: number): number => {
-  console.log(path);
   const [x0, y0] = path[i - 1];
   const [x1, y1] = path[i];
   const direction = x1 !== x0 ? "x" : "y";

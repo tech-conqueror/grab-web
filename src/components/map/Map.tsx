@@ -2,8 +2,8 @@ import { Component } from "react";
 import obstaclesData from "./obstacles";
 import Obstacle from "./Obstacle";
 import Car from "../car/Car";
-import { wait } from "../../share/utils";
-import route from "../car/route";
+import { getRandomInt, wait } from "../../share/utils";
+import routes from "../car/routes";
 
 interface CarData {
   carId: string;
@@ -15,8 +15,6 @@ interface CarData {
 interface MapState {
   cars: CarData[];
 }
-
-const fetchInterval: number = 1000;
 
 /**
  * Generates a map of coordinates to obstacle colors.
@@ -42,9 +40,23 @@ class Map extends Component<{}, MapState> {
   }
 
   async simulate(): Promise<void> {
-    for (const record of route) {
-      this.setState({ cars: [record] });
-      await wait(fetchInterval);
+    const updateCount: number = routes[0].updates.length;
+
+    for (let i = 0; i < updateCount; i++) {
+      const cars: CarData[] = [];
+
+      for (let j = 0; j < routes.length; j++) {
+        const update = {
+          carId: routes[j].carId,
+          path: routes[j].path,
+          next: routes[j].updates[i],
+        };
+        cars.push(update);
+      }
+
+      this.setState({ cars });
+      const interval: number = getRandomInt(500, 1000);
+      await wait(interval);
     }
   }
 
