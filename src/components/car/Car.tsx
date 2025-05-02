@@ -9,7 +9,7 @@ import {
 } from "./movement";
 import { wait } from "../../share/utils";
 
-const fetchInterval: number = 1000;
+const fetchInterval: number = 1500;
 const refreshInterval: number = 33;
 const turnDuration: number = refreshInterval * 8;
 const animationOverhead: number = 200;

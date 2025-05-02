@@ -2,7 +2,7 @@ import { Component } from "react";
 import obstaclesData from "./obstacles";
 import Obstacle from "./Obstacle";
 import Car from "../car/Car";
-import { getRandomInt, wait } from "../../share/utils";
+import { api, getRandomInt, Route, wait } from "../../share/utils";
 import routes from "../car/routes";
 
 interface CarData {
@@ -14,7 +14,10 @@ interface CarData {
 
 interface MapState {
   cars: CarData[];
+  refreshing: boolean;
 }
+
+const fetchInterval: number = 1500;
 
 /**
  * Generates a map of coordinates to obstacle colors.
@@ -34,9 +37,15 @@ const generateObstacleMap = (obstacles: any[]): CoordsMap => {
 };
 
 class Map extends Component<{}, MapState> {
+  previousUpdateAt: number;
+
   constructor(props: {}) {
     super(props);
-    this.state = { cars: [] };
+    this.previousUpdateAt = Date.now();
+    this.state = {
+      cars: [],
+      refreshing: false,
+    };
   }
 
   async simulate(): Promise<void> {
@@ -60,8 +69,38 @@ class Map extends Component<{}, MapState> {
     }
   }
 
+  async loadData(): Promise<void> {
+    while (true) {
+      const routes: Route[] = await api.get();
+
+      const timeout = 2000;
+      const now = Date.now();
+      if (now - this.previousUpdateAt > timeout) {
+        this.previousUpdateAt = now;
+        this.setState({ cars: [], refreshing: true });
+        await wait(fetchInterval);
+        continue;
+      }
+
+      this.previousUpdateAt = now;
+
+      const cars: CarData[] = [];
+      for (const ride of routes) {
+        const { carId, actual, path } = ride;
+        cars.push({
+          carId: carId,
+          path: path,
+          actual: actual,
+        });
+      }
+
+      this.setState({ cars, refreshing: false });
+      await wait(fetchInterval);
+    }
+  }
+
   componentDidMount(): void {
-    this.simulate();
+    this.loadData();
   }
 
   render() {
