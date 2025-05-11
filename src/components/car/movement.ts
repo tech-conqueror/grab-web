@@ -9,7 +9,7 @@ export const getNextCoordIndex = (
   path: [number, number][]
 ): number => {
   return path.findIndex(([x, y], i, path) => {
-    if (currX === x && currY === y) return true;
+    if (currX === path[i][0] && currY === path[i][1]) return true;
     if (i === 0) return false;
 
     const xMatches = x === currX;

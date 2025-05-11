@@ -8,7 +8,7 @@ export interface Path {
 
 const paths: Path[] = [
   {
-    carId: "car1",
+    carId: "1",
     selected: "first",
     i: 0,
     first: [
@@ -101,7 +101,7 @@ const paths: Path[] = [
     ],
   },
   {
-    carId: "car2",
+    carId: "2",
     selected: "first",
     i: 0,
     first: [
@@ -184,7 +184,7 @@ const paths: Path[] = [
     ],
   },
   {
-    carId: "car3",
+    carId: "3",
     i: 0,
     selected: "first",
     first: [

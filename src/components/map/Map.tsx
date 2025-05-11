@@ -1,46 +1,19 @@
 import { Component } from "react";
-import obstaclesData from "./obstacles";
-import Obstacle from "./Obstacle";
-import Car from "../car/Car";
-import { api, getRandomInt, Route, wait } from "../../share/utils";
-import routes from "../car/routes";
-
-interface CarData {
-  carId: string;
-  actual: [number, number];
-  rotation?: number;
-  path: [number, number][];
-}
+import ObstacleComponent from "./Obstacle";
+import { Car as CarComponent, CarProps } from "../car/Car";
+import { api, Car, wait } from "../../share/utils";
+import { Obstacle, obstacles } from "./obstacles";
 
 interface MapState {
-  cars: CarData[];
+  cars: CarProps[];
   refreshing: boolean;
 }
-
-const fetchInterval: number = 1500;
-
-/**
- * Generates a map of coordinates to obstacle colors.
- */
-type CoordsMap = Record<string, string>;
-const generateObstacleMap = (obstacles: any[]): CoordsMap => {
-  const defaultColor = "#A2A3A2";
-  const coordsToObstacles: CoordsMap = {};
-  obstacles.forEach(([xStart, xEnd, yStart, yEnd, color]) => {
-    for (let x = xStart; x <= xEnd; x++) {
-      for (let y = yStart; y <= yEnd; y++) {
-        coordsToObstacles[`${x}:${y}`] = color || defaultColor;
-      }
-    }
-  });
-  return coordsToObstacles;
-};
-
 class Map extends Component<{}, MapState> {
   previousUpdateAt: number;
 
   constructor(props: {}) {
     super(props);
+
     this.previousUpdateAt = Date.now();
     this.state = {
       cars: [],
@@ -48,30 +21,94 @@ class Map extends Component<{}, MapState> {
     };
   }
 
-  async simulate(): Promise<void> {
-    const updateCount: number = routes[0].updates.length;
+  render() {
+    const gridSize = 500;
+    const gridCount = 50; // Number of squares in each direction
+    const squareSize = gridSize / gridCount;
 
-    for (let i = 0; i < updateCount; i++) {
-      const cars: CarData[] = [];
+    /**
+     * Generates a map of coordinates to obstacle colors.
+     */
+    const generateObstacleMap = (
+      obstacles: Obstacle[]
+    ): Record<string, string> => {
+      const coordsToObstacles: Record<string, string> = {};
+      const defaultColor = "#A2A3A2";
 
-      for (let j = 0; j < routes.length; j++) {
-        const update = {
-          carId: routes[j].carId,
-          path: routes[j].path,
-          actual: routes[j].updates[i],
-        };
-        cars.push(update);
+      obstacles.forEach(([xStart, xEnd, yStart, yEnd, color]) => {
+        for (let x = xStart; x <= xEnd; x++) {
+          for (let y = yStart; y <= yEnd; y++) {
+            coordsToObstacles[`${x}:${y}`] = color || defaultColor;
+          }
+        }
+      });
+
+      return coordsToObstacles;
+    };
+
+    const obstacleMap = generateObstacleMap(obstacles);
+    const obstacleComponents = Object.entries(obstacleMap).map(
+      ([key, color]) => {
+        const [x, y] = key.split(":").map(Number);
+        return (
+          <ObstacleComponent
+            key={key}
+            x={x * squareSize}
+            y={y * squareSize}
+            width={squareSize}
+            height={squareSize}
+            color={color}
+          />
+        );
       }
+    );
 
-      this.setState({ cars });
-      const interval: number = getRandomInt(500, 1000);
-      await wait(interval);
-    }
+    const carComponents = this.state.cars.map(({ carId, actual, path }) => (
+      <CarComponent key={carId} carId={carId} actual={actual} path={path} />
+    ));
+
+    const actualsColors: Record<string, string> = {
+      "1": "#10b981",
+      "2": "#6366f1",
+      "3": "#f43f5e",
+    };
+    const actuals = this.state.cars.map(({ carId, actual }) => {
+      return (
+        <circle
+          key={`${actual[0]}:${actual[1]}`}
+          r={squareSize / 2}
+          cx={actual[0] * squareSize + squareSize / 2}
+          cy={actual[1] * squareSize + squareSize / 2}
+          fill={actualsColors[carId]}
+        />
+      );
+    });
+
+    return (
+      <div className="map">
+        <div className="map-inner">
+          <div
+            className={`map-refresh ${this.state.refreshing ? "active" : ""}`}
+          />
+          <svg width={gridSize} height={gridSize} className="map">
+            {obstacleComponents}
+            {actuals}
+            {carComponents}
+          </svg>
+        </div>
+      </div>
+    );
   }
 
-  async loadData(): Promise<void> {
+  componentDidMount(): void {
+    this.stimulate();
+  }
+
+  async stimulate(): Promise<void> {
+    const fetchInterval: number = 1500;
+
     while (true) {
-      const routes: Route[] = await api.get();
+      const cars: Car[] = await api.get();
 
       const timeout = 2000;
       const now = Date.now();
@@ -84,57 +121,14 @@ class Map extends Component<{}, MapState> {
 
       this.previousUpdateAt = now;
 
-      const cars: CarData[] = [];
-      for (const ride of routes) {
-        const { carId, actual, path } = ride;
-        cars.push({
-          carId: carId,
-          path: path,
-          actual: actual,
-        });
+      const carProps: CarProps[] = [];
+      for (const car of cars) {
+        carProps.push(car);
       }
 
-      this.setState({ cars, refreshing: false });
+      this.setState({ cars: carProps, refreshing: false });
       await wait(fetchInterval);
     }
-  }
-
-  componentDidMount(): void {
-    this.loadData();
-  }
-
-  render() {
-    const gridSize = 500;
-    const gridCount = 50; // Number of squares in each direction
-    const squareSize = gridSize / gridCount;
-
-    const obstacleMap = generateObstacleMap(obstaclesData);
-    const obstacleElems = Object.entries(obstacleMap).map(([key, color]) => {
-      const [x, y] = key.split(":").map(Number);
-      return (
-        <Obstacle
-          key={key}
-          x={x * squareSize}
-          y={y * squareSize}
-          width={squareSize}
-          height={squareSize}
-          color={color}
-        />
-      );
-    });
-
-    const cars = this.state.cars.map(
-      ({ carId, actual, rotation = 270, path }) => (
-        <Car key={carId} actual={actual} rotation={rotation} path={path} />
-      )
-    );
-
-    return (
-      <svg width={gridSize} height={gridSize} className="map">
-        {obstacleElems}
-        {cars}
-      </svg>
-    );
   }
 }
 

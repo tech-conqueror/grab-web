@@ -11,7 +11,13 @@ type ObstacleProps = {
 /**
  * Component representing an individual obstacle.
  */
-const Obstacle: React.FC<ObstacleProps> = ({ x, y, width, height, color }) => {
+const Obstacle: React.FC<ObstacleProps> = ({
+  x,
+  y,
+  width,
+  height,
+  color,
+}: ObstacleProps) => {
   return (
     <rect
       x={x}

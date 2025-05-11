@@ -10,13 +10,13 @@ import {
 import { wait } from "../../share/utils";
 
 const fetchInterval: number = 1500;
-const refreshInterval: number = 33;
+const refreshInterval: number = 5;
 const turnDuration: number = refreshInterval * 8;
 const animationOverhead: number = 200;
 
-interface CarProps {
+export interface CarProps {
+  carId: string;
   actual: [number, number];
-  rotation: number;
   path: [number, number][];
 }
 
@@ -26,10 +26,11 @@ interface CarState {
   path: [number, number][];
 }
 
-class Car extends Component<CarProps, CarState> {
+export class Car extends Component<CarProps, CarState> {
   latestUpdateAt: number;
   moveBusy: boolean;
   rotateBusy: boolean;
+  intervalId?: NodeJS.Timeout;
 
   constructor(props: CarProps) {
     super(props);
@@ -160,6 +161,47 @@ class Car extends Component<CarProps, CarState> {
     this.move(this.props.actual, this.props.path, receivedAt);
   }
 
+  componentDidMount(): void {
+    this.intervalId = setInterval(async () => {
+      try {
+        const location = this.props.actual;
+        const response = await fetch(
+          `http://localhost:8080/drivers/${this.props.carId}`,
+          {
+            method: "PATCH",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify([
+              {
+                op: "replace",
+                path: "currentLocation/lat",
+                value: location[0],
+              },
+              {
+                op: "replace",
+                path: "currentLocation/lng",
+                value: location[1],
+              },
+            ]),
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+      } catch (error) {
+        console.error("Failed to patch and fetch new location:", error);
+      }
+    }, 5000);
+  }
+
+  componentWillUnmount() {
+    if (this.intervalId) {
+      clearInterval(this.intervalId);
+    }
+  }
+
   render() {
     const gridSize = 500;
     const gridCount = 50; // Number of squares in each direction
@@ -175,5 +217,3 @@ class Car extends Component<CarProps, CarState> {
     );
   }
 }
-
-export default Car;

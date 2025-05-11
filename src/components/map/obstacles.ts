@@ -1,6 +1,6 @@
-type Obstacle = [number, number, number, number, string?];
+export type Obstacle = [number, number, number, number, string?];
 
-const obstacles: Obstacle[] = [
+export const obstacles: Obstacle[] = [
   // Parks
   [19, 23, 4, 10, "#70A288"],
   [33, 34, 24, 30, "#70A288"],
@@ -248,5 +248,3 @@ const obstacles: Obstacle[] = [
   [10, 12, 45, 48],
   [10, 10, 45, 45],
 ];
-
-export default obstacles;

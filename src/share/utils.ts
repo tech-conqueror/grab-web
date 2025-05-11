@@ -1,5 +1,12 @@
-import { Coordinate } from "../components/car/routes";
 import paths from "./paths";
+
+type Coordinate = [number, number];
+
+interface Car {
+  carId: string;
+  path: Coordinate[];
+  actual: [number, number];
+}
 
 // Extending Number prototype with a 'round' method
 declare global {
@@ -16,22 +23,10 @@ Number.prototype.round = function (places: number): number {
 export const wait = (t: number): Promise<void> =>
   new Promise((resolve) => setTimeout(resolve, t));
 
-export const getRandomInt = (min: number, max: number): number => {
-  min = Math.ceil(min);
-  max = Math.floor(max);
-  return Math.floor(Math.random() * (max - min + 1)) + min;
-};
-
-interface Route {
-  carId: string;
-  path: Coordinate[];
-  actual: [number, number];
-}
-
-const routes: Map<string, Route> = new Map<string, Route>();
+const cars: Map<string, Car> = new Map<string, Car>();
 
 export const api: { get: () => Promise<any> } = {
-  get: async (): Promise<any> => routes.values(),
+  get: async (): Promise<any> => cars.values(),
 };
 
 const cycle = async (pathObj: {
@@ -46,7 +41,7 @@ const cycle = async (pathObj: {
     const path = pathObj[selected];
     const [x, y] = path[i];
 
-    routes.set(carId, { carId, path, actual: [x, y] });
+    cars.set(carId, { carId, path, actual: [x, y] });
 
     if (i === path.length - 1) {
       pathObj.selected = selected === "first" ? "second" : "first";
@@ -62,4 +57,4 @@ const cycle = async (pathObj: {
 
 paths.forEach((path) => cycle(path));
 
-export type { Route };
+export type { Car };

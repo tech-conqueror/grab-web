@@ -1,30 +1,56 @@
-import { messaging, getToken, onMessage } from "./firebase-config";
+import { initializeApp } from "firebase/app";
+import {
+  Messaging,
+  getMessaging,
+  getToken,
+  onMessage,
+} from "firebase/messaging";
+
+export type Notification = {
+  title: string;
+  body: string;
+};
+
+const firebaseConfig = {
+  apiKey: "AIzaSyBz-FYRolSVNzuD3Jzzw66EtbJZ81zP8nE",
+  authDomain: "grab-e366a.firebaseapp.com",
+  projectId: "grab-e366a",
+  storageBucket: "grab-e366a.firebasestorage.app",
+  messagingSenderId: "745121493248",
+  appId: "1:745121493248:web:628717004fc3a9a98e03e5",
+  measurementId: "G-BHGVTCESME",
+};
 
 // Function to request permission and get FCM token
-export const requestPermission = async (): Promise<string | null> => {
+const requestPermission = async (messaging: Messaging): Promise<void> => {
   try {
     const permission = await Notification.requestPermission();
-    if (permission === "granted") {
-      const token = await getToken(messaging, {
-        vapidKey:
-          "BO_hqCZyEA3HyFDeb9O2GOVRxrmgY6iYkChZo1P347kmIFr0MEoIxoFHCrlXE1aOga5pFJRO21zMyoKsxfpLmts",
-      });
-      console.log("FCM Token:", token);
-      return token; // Send this token to your backend for later use
-    } else {
+    if (permission !== "granted") {
       console.log("Notification permission denied.");
-      return null;
+      return;
     }
+
+    const token = await getToken(messaging, {
+      vapidKey:
+        "BO_hqCZyEA3HyFDeb9O2GOVRxrmgY6iYkChZo1P347kmIFr0MEoIxoFHCrlXE1aOga5pFJRO21zMyoKsxfpLmts",
+    });
+
+    console.log("FCM Token:", token);
   } catch (error) {
     console.error("Error getting notification token:", error);
-    return null;
   }
 };
 
 // Function to handle incoming messages
-export const setupOnMessageListener = (
+export const setupOnNotificationListener = async (
   callback: (payload: any) => void
-): void => {
+): Promise<void> => {
+  // Initialize Firebase
+  const app = initializeApp(firebaseConfig);
+  const messaging: Messaging = getMessaging(app);
+
+  await requestPermission(messaging);
+
   onMessage(messaging, (payload) => {
     console.log("Message received:", payload);
     callback(payload);
