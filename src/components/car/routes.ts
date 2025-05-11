@@ -1,16 +1,18 @@
 type Coordinate = [number, number];
 
+interface Route {
+  carId: string;
+  path: Coordinate[];
+  updates: [number, number][];
+}
+
 interface Step {
   carId: string;
   next: Coordinate;
   path: Coordinate[];
 }
 
-const routes: {
-  carId: string;
-  path: Coordinate[];
-  updates: [number, number][];
-}[] = [
+const routes: Route[] = [
   {
     carId: "car1",
     path: [
@@ -166,3 +168,4 @@ const routes: {
 ];
 
 export default routes;
+export type { Coordinate };
