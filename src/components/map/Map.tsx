@@ -1,13 +1,22 @@
 import { Component } from "react";
 import ObstacleComponent from "./Obstacle";
+import {
+  Passenger as PassengerComponent,
+  PassengerProps,
+} from "../passenger/Passenger";
+import DestinationIconComponent from "../passenger/DestinationIcon";
 import { Car as CarComponent, CarProps } from "../car/Car";
 import { api, Car, wait } from "../../share/utils";
 import { Obstacle, obstacles } from "./obstacles";
 
+const fetchInterval: number = 1500;
+
 interface MapState {
+  passengers: PassengerProps[];
   cars: CarProps[];
   refreshing: boolean;
 }
+
 class Map extends Component<{}, MapState> {
   previousUpdateAt: number;
 
@@ -16,6 +25,7 @@ class Map extends Component<{}, MapState> {
 
     this.previousUpdateAt = Date.now();
     this.state = {
+      passengers: [],
       cars: [],
       refreshing: false,
     };
@@ -63,6 +73,31 @@ class Map extends Component<{}, MapState> {
       }
     );
 
+    const passengerComponents = this.state.passengers.map(
+      ({ name, location, destination }) => (
+        <PassengerComponent
+          key={name}
+          name={name}
+          location={location}
+          destination={destination}
+        />
+      )
+    );
+
+    const destinationIconComponents = this.state.passengers.map(
+      ({ destination }) => {
+        const [x, y] = destination;
+
+        return (
+          <DestinationIconComponent
+            key={`${x}:${y}`}
+            x={x * squareSize - squareSize / +5}
+            y={y * squareSize - squareSize / 2 - 8}
+          />
+        );
+      }
+    );
+
     const carComponents = this.state.cars.map(({ carId, actual, path }) => (
       <CarComponent key={carId} carId={carId} actual={actual} path={path} />
     ));
@@ -72,7 +107,7 @@ class Map extends Component<{}, MapState> {
       "2": "#6366f1",
       "3": "#f43f5e",
     };
-    const actuals = this.state.cars.map(({ carId, actual }) => {
+    const actualComponents = this.state.cars.map(({ carId, actual }) => {
       return (
         <circle
           key={`${actual[0]}:${actual[1]}`}
@@ -92,7 +127,9 @@ class Map extends Component<{}, MapState> {
           />
           <svg width={gridSize} height={gridSize} className="map">
             {obstacleComponents}
-            {actuals}
+            {passengerComponents}
+            {destinationIconComponents}
+            {actualComponents}
             {carComponents}
           </svg>
         </div>
@@ -101,14 +138,19 @@ class Map extends Component<{}, MapState> {
   }
 
   componentDidMount(): void {
+    this.loadPassengers();
     this.stimulate();
   }
 
-  async stimulate(): Promise<void> {
-    const fetchInterval: number = 1500;
+  async loadPassengers() {
+    const passengers = await api.getPassengers();
+    this.setState({ passengers });
+    await wait(fetchInterval);
+  }
 
+  async stimulate(): Promise<void> {
     while (true) {
-      const cars: Car[] = await api.get();
+      const cars: Car[] = await api.getCars();
 
       const timeout = 2000;
       const now = Date.now();
